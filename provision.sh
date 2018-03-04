@@ -1,42 +1,27 @@
 #!/usr/bin/env bash
 
-# Steps to install
-# 0. install git `yum -y install git`
-# 1. install mariadb `# yum -y install mariadb-server`
-# 2. enable mariadb `# systemctl enable mariadb`
-# 3. start mariadb `# systemctl start mariadb`
-# 4. Do secure install `# mysql_secure_installation`
-# 5. Create omeka user and grant permissions
-# 6. Install apache (httpd) `yum -y install httpd`
-# 7. clone omeka to `/var/www/html` `git clone https://github.com/omeka/omeka-s.git /var/www/html`
-# x. install epel-release `# yum -y install epel-release`
-# x. Install npm and nodejs `# yum -y install nodejs`
-# x. create omeka user `CREATE USER 'omeka'@'localhost' IDENTIFIED BY 'omeka';`
-# x. grant permissions `GRANT ALL PRIVELEGES on omeka.* TO omeka@localhost;`
-# x. install composer `# yum -y install composer`
-
-# Need to add remi repo to be able to install php 7+
-
-# Create user for apache
-
+# Update the entire system
 system::update() {
     yum -y update
 }
 
+# Configure repositories
 system::initial_setup() {
     yum -y install git epel-release yum-utils
     yum -y install http://rpms.remirepo.net/enterprise/remi-release-7.rpm
     yum-config-manager --enable remi-php72
 }
 
+# Install httpd(apache2)
 httpd::install() { 
     yum -y install httpd
 }
 
-httpd::restart() {
-    sytemctl restart httpd
-}
 
+# Configure httpd
+# - Tell httpd to defer to .htaccess files
+# - Tell httpd to look for `index.php` when serving files
+# - set Apache user to own `/var/www/html`
 httpd::configure() {
     # Create apache user
     # usermod -d /var/www/html -g apache apache
@@ -47,24 +32,29 @@ httpd::configure() {
     chown apache:apache -R /var/www/html
 }
 
+# Start and enable httpd
 httpd::start_and_enable() {
     systemctl enable httpd
     systemctl start httpd
 }
 
+# Instal php and all necessary libraries
 php::install() {
     yum -y install php php-pdo php-xml php-pecl-mysql composer
 }
 
+# Install mariadb
 mariadb::install() {
     yum -y install mariadb-server
 }
 
+# Start and enable mariadb
 mariadb::enable_and_start() {
     systemctl enable mariadb
     systemctl start mariadb
 }
 
+# Secure install mariadb and add omeka user
 mariadb::configure() {
     echo '
 
@@ -87,22 +77,27 @@ mariadb::configure() {
     mysql -u root -pvagrant -e "GRANT ALL PRIVILEGES ON omeka.* TO omeka@localhost;" 
 }
 
+# Install imagemagick
 imagemagick::install() {
     yum -y install ImageMagick
 }
 
+# Install node and npm
 node::install() {
     yum -y install npm
 }
 
+# Globall install gulp
 gulp::install() {
     npm install --global gulp-cli
 }
 
+# Disable SELinux
 selinux::disable() {
     setenforce 0
 }
 
+# Install omeka to /var/www/html
 omeka::install() {
     git clone https://github.com/omeka/omeka-s.git /var/www/html
     cd /var/www/html
@@ -117,6 +112,7 @@ omeka::install() {
     cd - 
 }
 
+# Set up omeka configuration files
 omeka::configure() {
     # Load in database configuration
     echo '
